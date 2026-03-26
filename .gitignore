@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -15,3 +16,20 @@ buildNumber.properties
 .project
 # JDT-specific (Eclipse Java Development Tools)
 .classpath
+=======
+# Build output
+/build/
+/dist/
+/target/
+
+# NetBeans private files
+/nbproject/private/
+
+# IDE files
+/.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+>>>>>>> b51a57b7ca409fd96125c3e28b326336d9b1f742
