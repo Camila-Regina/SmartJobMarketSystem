@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "generated.grpc.workerProfile";
+option java_outer_classname = "WorkerProfileServiceImpl";
+
+package workerProfile;
+
+service WorkerProfileService {
+  // Unary RPC - Get a specific worker profile by ID
+  rpc getWorkerProfile (WorkerRequest) returns (WorkerResponse);
+
+  // Client Streaming RPC - Upload multiple skills for a worker
+  rpc uploadSkills (stream SkillRequest) returns (SkillSummaryResponse);
+}
+
+message WorkerRequest {
+  string workerId = 1;
+}
+
+message WorkerResponse {
+  string workerId = 1;
+  string name = 2;
+  int32 age = 3;
+  string email = 4;
+  float employabilityScore = 5;
+}
+
+message SkillRequest {
+  string skillName = 1;
+  int32 proficiencyLevel = 2;
+}
+
+message SkillSummaryResponse {
+  int32 totalSkills = 1;
+  float employabilityScore = 2;
+}
