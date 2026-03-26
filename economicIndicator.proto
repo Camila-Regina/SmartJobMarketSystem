@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "generated.grpc.economicIndicator";
+option java_outer_classname = "EconomicIndicatorImpl";
+
+package economicIndicator;
+
+service EconomicIndicatorService {
+  // Unary RPC - Get a snapshot of economic indicators for a region
+  rpc getIndicatorSnapshot (IndicatorRequest) returns (IndicatorResponse);
+
+  // Bidirectional Streaming RPC - Monitor indicators for multiple regions
+  rpc monitorIndicators (stream IndicatorRequest) returns (stream IndicatorResponse);
+}
+
+message IndicatorRequest {
+  string region = 1;
+}
+
+message IndicatorResponse {
+  string region = 1;
+  float unemploymentRate = 2;
+  double averageSalary = 3;
+  float gdpGrowth = 4;
+  string timestamp = 5;
+}

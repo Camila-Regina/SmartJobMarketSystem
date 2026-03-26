@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "generated.grpc.jobListing";
+option java_outer_classname = "JobListingServiceImpl";
+
+package jobListing;
+
+service JobListingService {
+  // Unary RPC - Get a specific job by ID
+  rpc getJob (JobRequest) returns (JobResponse);
+
+  // Server Streaming RPC - Search jobs by keyword and location
+  rpc searchJobs (SearchRequest) returns (stream JobResponse);
+}
+
+message JobRequest {
+  string jobId = 1;
+}
+
+message SearchRequest {
+  string keyword = 1;
+  string location = 2;
+}
+
+message JobResponse {
+  string jobId = 1;
+  string title = 2;
+  string company = 3;
+  string location = 4;
+  int32 salary = 5;
+  string description = 6;
+}
