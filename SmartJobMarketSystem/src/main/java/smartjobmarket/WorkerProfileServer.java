@@ -1,3 +1,12 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+/**
+ *
+ * @author camilareginadasilva
+ */
+
 package smartjobmarket;
 
 import io.grpc.Server;
@@ -19,6 +28,16 @@ public class WorkerProfileServer {
                     .start();
             logger.info("WorkerProfileServer started, listening on port " + port);
             System.out.println("WorkerProfileServer started, listening on port " + port);
+
+            // Register service with jmDNS
+            ServiceRegistration registration = ServiceRegistration.getInstance();
+            registration.registerService(
+                    "_workerprofileservice._tcp.local.",
+                    "WorkerProfileService",
+                    port,
+                    "Worker Profile gRPC Service"
+            );
+
             server.awaitTermination();
         } catch (IOException e) {
             e.printStackTrace();

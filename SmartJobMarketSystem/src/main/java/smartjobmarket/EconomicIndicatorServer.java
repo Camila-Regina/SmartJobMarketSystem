@@ -1,4 +1,13 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package smartjobmarket;
+
+/**
+ *
+ * @author camilareginadasilva
+ */
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -19,6 +28,16 @@ public class EconomicIndicatorServer {
                     .start();
             logger.info("EconomicIndicatorServer started, listening on port " + port);
             System.out.println("EconomicIndicatorServer started, listening on port " + port);
+
+            // Register service with jmDNS
+            ServiceRegistration registration = ServiceRegistration.getInstance();
+            registration.registerService(
+                    "_economicindicatorservice._tcp.local.",
+                    "EconomicIndicatorService",
+                    port,
+                    "Economic Indicator gRPC Service"
+            );
+
             server.awaitTermination();
         } catch (IOException e) {
             e.printStackTrace();
