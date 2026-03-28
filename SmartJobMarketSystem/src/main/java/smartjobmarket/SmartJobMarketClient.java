@@ -214,6 +214,22 @@ public class SmartJobMarketClient {
         return result.length() > 0 ? result.toString() : "No skills processed.";
     }
 
+    // Unary RPC - Get Economic Indicator Snapshot
+    public String getIndicatorSnapshot(String region) {
+        try {
+            IndicatorRequest request = IndicatorRequest.newBuilder().setRegion(region).build();
+            IndicatorResponse response = economicIndicatorStub.getIndicatorSnapshot(request);
+            return "Region: " + response.getRegion() + "\n"
+                    + "Unemployment Rate: " + response.getUnemploymentRate() + "%\n"
+                    + "Average Salary: €" + response.getAverageSalary() + "\n"
+                    + "GDP Growth: " + response.getGdpGrowth() + "%\n"
+                    + "Timestamp: " + response.getTimestamp();
+        } catch (StatusRuntimeException e) {
+            logger.log(Level.WARNING, "RPC failed: {0}", e.getStatus());
+            return "Error: " + e.getStatus().getDescription();
+        }
+    }
+
     // Bidirectional Streaming RPC - Monitor Indicators
     public String monitorIndicators(String regionsInput) {
         final StringBuilder result = new StringBuilder();
