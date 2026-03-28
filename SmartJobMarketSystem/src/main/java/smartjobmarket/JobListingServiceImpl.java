@@ -2,17 +2,23 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
+package smartjobmarket;
+
 /**
  *
  * @author camilareginadasilva
  */
 
-package smartjobmarket;
-
 import generated.grpc.jobListing.JobListingServiceGrpc;
 import generated.grpc.jobListing.JobRequest;
 import generated.grpc.jobListing.JobResponse;
 import generated.grpc.jobListing.SearchRequest;
+import io.grpc.Context;
+import io.grpc.Contexts;
+import io.grpc.Metadata;
+import io.grpc.ServerCall;
+import io.grpc.ServerCallHandler;
+import io.grpc.ServerInterceptor;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.util.ArrayList;
@@ -22,6 +28,11 @@ import java.util.logging.Logger;
 public class JobListingServiceImpl extends JobListingServiceGrpc.JobListingServiceImplBase {
 
     private static final Logger logger = Logger.getLogger(JobListingServiceImpl.class.getName());
+
+    // Metadata key for client ID
+    public static final Metadata.Key<String> CLIENT_ID_KEY =
+            Metadata.Key.of("client-id", Metadata.ASCII_STRING_MARSHALLER);
+
     private final List<JobResponse> jobDatabase = new ArrayList<>();
 
     public JobListingServiceImpl() {
@@ -71,10 +82,44 @@ public class JobListingServiceImpl extends JobListingServiceGrpc.JobListingServi
                 .build());
     }
 
+    // Server Interceptor for Metadata
+    public static class MetadataInterceptor implements ServerInterceptor {
+        @Override
+        public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+                ServerCall<ReqT, RespT> call,
+                Metadata headers,
+                ServerCallHandler<ReqT, RespT> next) {
+
+            String clientId = headers.get(CLIENT_ID_KEY);
+            if (clientId != null) {
+                logger.info("Request received from client: " + clientId);
+            } else {
+                logger.info("Request received from unknown client");
+            }
+            return Contexts.interceptCall(Context.current(), call, headers, next);
+        }
+    }
+
     // Unary RPC - Get a specific job by ID
     @Override
     public void getJob(JobRequest request, StreamObserver<JobResponse> responseObserver) {
         System.out.println("getJob called with ID: " + request.getJobId());
+
+        // Error handling - validate input
+        if (request.getJobId() == null || request.getJobId().isEmpty()) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("Job ID cannot be empty")
+                    .asRuntimeException());
+            return;
+        }
+
+        // Check if context is cancelled (deadline exceeded)
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(Status.CANCELLED
+                    .withDescription("Request was cancelled by the client")
+                    .asRuntimeException());
+            return;
+        }
 
         JobResponse found = null;
         for (JobResponse job : jobDatabase) {
@@ -100,11 +145,28 @@ public class JobListingServiceImpl extends JobListingServiceGrpc.JobListingServi
         System.out.println("searchJobs called with keyword: " + request.getKeyword()
                 + " location: " + request.getLocation());
 
+        // Error handling - validate input
+        if ((request.getKeyword() == null || request.getKeyword().isEmpty()) &&
+            (request.getLocation() == null || request.getLocation().isEmpty())) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("At least one search parameter (keyword or location) must be provided")
+                    .asRuntimeException());
+            return;
+        }
+
         String keyword = request.getKeyword().toLowerCase();
         String location = request.getLocation().toLowerCase();
         boolean found = false;
 
         for (JobResponse job : jobDatabase) {
+            // Check if context is cancelled (deadline exceeded)
+            if (Context.current().isCancelled()) {
+                responseObserver.onError(Status.CANCELLED
+                        .withDescription("Request was cancelled")
+                        .asRuntimeException());
+                return;
+            }
+
             boolean matchesKeyword = keyword.isEmpty()
                     || job.getTitle().toLowerCase().contains(keyword)
                     || job.getDescription().toLowerCase().contains(keyword);
@@ -125,8 +187,7 @@ public class JobListingServiceImpl extends JobListingServiceGrpc.JobListingServi
 
         if (!found) {
             responseObserver.onError(Status.NOT_FOUND
-                    .withDescription("No jobs found for keyword: "
-                            + request.getKeyword()
+                    .withDescription("No jobs found for keyword: " + request.getKeyword()
                             + " in location: " + request.getLocation())
                     .asRuntimeException());
         } else {

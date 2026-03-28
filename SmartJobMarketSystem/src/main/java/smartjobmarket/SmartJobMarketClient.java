@@ -23,7 +23,9 @@ import generated.grpc.workerProfile.WorkerRequest;
 import generated.grpc.workerProfile.WorkerResponse;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.MetadataUtils;
 import io.grpc.stub.StreamObserver;
 import java.util.Iterator;
 import java.util.concurrent.CountDownLatch;
@@ -36,6 +38,10 @@ public class SmartJobMarketClient {
 
     private static final Logger logger = Logger.getLogger(SmartJobMarketClient.class.getName());
 
+    // Metadata key for client ID
+    private static final Metadata.Key<String> CLIENT_ID_KEY =
+            Metadata.Key.of("client-id", Metadata.ASCII_STRING_MARSHALLER);
+
     private ManagedChannel jobListingChannel;
     private ManagedChannel workerProfileChannel;
     private ManagedChannel economicIndicatorChannel;
@@ -47,6 +53,10 @@ public class SmartJobMarketClient {
     private EconomicIndicatorServiceGrpc.EconomicIndicatorServiceStub economicIndicatorAsyncStub;
 
     public SmartJobMarketClient() {
+        // Add metadata with client ID
+        Metadata metadata = new Metadata();
+        metadata.put(CLIENT_ID_KEY, "SmartJobMarketGUI-Client");
+
         try {
             // Discover and connect to JobListingService
             ServiceDiscovery jobDiscovery = new ServiceDiscovery(
@@ -56,12 +66,14 @@ public class SmartJobMarketClient {
                 int port = jobService.getPort();
                 jobListingChannel = ManagedChannelBuilder.forAddress("localhost", port)
                         .usePlaintext().build();
-                jobListingStub = JobListingServiceGrpc.newBlockingStub(jobListingChannel);
+                jobListingStub = JobListingServiceGrpc.newBlockingStub(jobListingChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("Connected to JobListingService on port " + port);
             } else {
                 jobListingChannel = ManagedChannelBuilder.forAddress("localhost", 50051)
                         .usePlaintext().build();
-                jobListingStub = JobListingServiceGrpc.newBlockingStub(jobListingChannel);
+                jobListingStub = JobListingServiceGrpc.newBlockingStub(jobListingChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("JobListingService not discovered, using default port 50051");
             }
 
@@ -73,14 +85,18 @@ public class SmartJobMarketClient {
                 int port = workerService.getPort();
                 workerProfileChannel = ManagedChannelBuilder.forAddress("localhost", port)
                         .usePlaintext().build();
-                workerProfileStub = WorkerProfileServiceGrpc.newBlockingStub(workerProfileChannel);
-                workerProfileAsyncStub = WorkerProfileServiceGrpc.newStub(workerProfileChannel);
+                workerProfileStub = WorkerProfileServiceGrpc.newBlockingStub(workerProfileChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
+                workerProfileAsyncStub = WorkerProfileServiceGrpc.newStub(workerProfileChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("Connected to WorkerProfileService on port " + port);
             } else {
                 workerProfileChannel = ManagedChannelBuilder.forAddress("localhost", 50052)
                         .usePlaintext().build();
-                workerProfileStub = WorkerProfileServiceGrpc.newBlockingStub(workerProfileChannel);
-                workerProfileAsyncStub = WorkerProfileServiceGrpc.newStub(workerProfileChannel);
+                workerProfileStub = WorkerProfileServiceGrpc.newBlockingStub(workerProfileChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
+                workerProfileAsyncStub = WorkerProfileServiceGrpc.newStub(workerProfileChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("WorkerProfileService not discovered, using default port 50052");
             }
 
@@ -92,14 +108,18 @@ public class SmartJobMarketClient {
                 int port = economicService.getPort();
                 economicIndicatorChannel = ManagedChannelBuilder.forAddress("localhost", port)
                         .usePlaintext().build();
-                economicIndicatorStub = EconomicIndicatorServiceGrpc.newBlockingStub(economicIndicatorChannel);
-                economicIndicatorAsyncStub = EconomicIndicatorServiceGrpc.newStub(economicIndicatorChannel);
+                economicIndicatorStub = EconomicIndicatorServiceGrpc.newBlockingStub(economicIndicatorChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
+                economicIndicatorAsyncStub = EconomicIndicatorServiceGrpc.newStub(economicIndicatorChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("Connected to EconomicIndicatorService on port " + port);
             } else {
                 economicIndicatorChannel = ManagedChannelBuilder.forAddress("localhost", 50053)
                         .usePlaintext().build();
-                economicIndicatorStub = EconomicIndicatorServiceGrpc.newBlockingStub(economicIndicatorChannel);
-                economicIndicatorAsyncStub = EconomicIndicatorServiceGrpc.newStub(economicIndicatorChannel);
+                economicIndicatorStub = EconomicIndicatorServiceGrpc.newBlockingStub(economicIndicatorChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
+                economicIndicatorAsyncStub = EconomicIndicatorServiceGrpc.newStub(economicIndicatorChannel)
+                        .withInterceptors(MetadataUtils.newAttachHeadersInterceptor(metadata));
                 System.out.println("EconomicIndicatorService not discovered, using default port 50053");
             }
 
@@ -108,11 +128,13 @@ public class SmartJobMarketClient {
         }
     }
 
-    // Unary RPC - Get Job by ID
+    // Unary RPC - Get Job by ID (with deadline)
     public String getJob(String jobId) {
         try {
             JobRequest request = JobRequest.newBuilder().setJobId(jobId).build();
-            JobResponse response = jobListingStub.getJob(request);
+            JobResponse response = jobListingStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .getJob(request);
             return "Job ID: " + response.getJobId() + "\n"
                     + "Title: " + response.getTitle() + "\n"
                     + "Company: " + response.getCompany() + "\n"
@@ -125,14 +147,16 @@ public class SmartJobMarketClient {
         }
     }
 
-    // Server Streaming RPC - Search Jobs
+    // Server Streaming RPC - Search Jobs (with deadline)
     public String searchJobs(String keyword, String location) {
         try {
             SearchRequest request = SearchRequest.newBuilder()
                     .setKeyword(keyword)
                     .setLocation(location)
                     .build();
-            Iterator<JobResponse> responses = jobListingStub.searchJobs(request);
+            Iterator<JobResponse> responses = jobListingStub
+                    .withDeadlineAfter(10, TimeUnit.SECONDS)
+                    .searchJobs(request);
             StringBuilder result = new StringBuilder();
             while (responses.hasNext()) {
                 JobResponse job = responses.next();
@@ -150,11 +174,13 @@ public class SmartJobMarketClient {
         }
     }
 
-    // Unary RPC - Get Worker Profile
+    // Unary RPC - Get Worker Profile (with deadline)
     public String getWorkerProfile(String workerId) {
         try {
             WorkerRequest request = WorkerRequest.newBuilder().setWorkerId(workerId).build();
-            WorkerResponse response = workerProfileStub.getWorkerProfile(request);
+            WorkerResponse response = workerProfileStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .getWorkerProfile(request);
             return "Worker ID: " + response.getWorkerId() + "\n"
                     + "Name: " + response.getName() + "\n"
                     + "Age: " + response.getAge() + "\n"
@@ -214,11 +240,13 @@ public class SmartJobMarketClient {
         return result.length() > 0 ? result.toString() : "No skills processed.";
     }
 
-    // Unary RPC - Get Economic Indicator Snapshot
+    // Unary RPC - Get Economic Indicator Snapshot (with deadline)
     public String getIndicatorSnapshot(String region) {
         try {
             IndicatorRequest request = IndicatorRequest.newBuilder().setRegion(region).build();
-            IndicatorResponse response = economicIndicatorStub.getIndicatorSnapshot(request);
+            IndicatorResponse response = economicIndicatorStub
+                    .withDeadlineAfter(5, TimeUnit.SECONDS)
+                    .getIndicatorSnapshot(request);
             return "Region: " + response.getRegion() + "\n"
                     + "Unemployment Rate: " + response.getUnemploymentRate() + "%\n"
                     + "Average Salary: €" + response.getAverageSalary() + "\n"

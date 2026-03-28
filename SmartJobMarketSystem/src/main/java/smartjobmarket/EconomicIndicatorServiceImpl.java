@@ -2,16 +2,17 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
+package smartjobmarket;
+
 /**
  *
  * @author camilareginadasilva
  */
 
-package smartjobmarket;
-
 import generated.grpc.economicIndicator.EconomicIndicatorServiceGrpc;
 import generated.grpc.economicIndicator.IndicatorRequest;
 import generated.grpc.economicIndicator.IndicatorResponse;
+import io.grpc.Context;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import java.time.LocalDateTime;
@@ -68,14 +69,34 @@ public class EconomicIndicatorServiceImpl extends EconomicIndicatorServiceGrpc.E
     public void getIndicatorSnapshot(IndicatorRequest request, StreamObserver<IndicatorResponse> responseObserver) {
         System.out.println("getIndicatorSnapshot called for region: " + request.getRegion());
 
+        // Error handling - validate input
+        if (request.getRegion() == null || request.getRegion().isEmpty()) {
+            responseObserver.onError(Status.INVALID_ARGUMENT
+                    .withDescription("Region cannot be empty")
+                    .asRuntimeException());
+            return;
+        }
+
+        // Check if context is cancelled
+        if (Context.current().isCancelled()) {
+            responseObserver.onError(Status.CANCELLED
+                    .withDescription("Request was cancelled by the client")
+                    .asRuntimeException());
+            return;
+        }
+
         IndicatorResponse indicator = indicatorDatabase.get(request.getRegion().toLowerCase());
 
         if (indicator != null) {
-            responseObserver.onNext(indicator);
+            IndicatorResponse updated = indicator.toBuilder()
+                    .setTimestamp(getCurrentTimestamp())
+                    .build();
+            responseObserver.onNext(updated);
             responseObserver.onCompleted();
         } else {
             responseObserver.onError(Status.NOT_FOUND
-                    .withDescription("No data found for region: " + request.getRegion())
+                    .withDescription("No data found for region: " + request.getRegion()
+                            + ". Available regions: Dublin, Cork, Galway, Limerick")
                     .asRuntimeException());
         }
     }
@@ -90,10 +111,25 @@ public class EconomicIndicatorServiceImpl extends EconomicIndicatorServiceGrpc.E
             public void onNext(IndicatorRequest request) {
                 System.out.println("Monitoring region: " + request.getRegion());
 
+                // Error handling - validate input
+                if (request.getRegion() == null || request.getRegion().isEmpty()) {
+                    responseObserver.onError(Status.INVALID_ARGUMENT
+                            .withDescription("Region cannot be empty")
+                            .asRuntimeException());
+                    return;
+                }
+
+                // Check if context is cancelled
+                if (Context.current().isCancelled()) {
+                    responseObserver.onError(Status.CANCELLED
+                            .withDescription("Request was cancelled")
+                            .asRuntimeException());
+                    return;
+                }
+
                 IndicatorResponse indicator = indicatorDatabase.get(request.getRegion().toLowerCase());
 
                 if (indicator != null) {
-                    // Send updated response with current timestamp
                     IndicatorResponse updated = indicator.toBuilder()
                             .setTimestamp(getCurrentTimestamp())
                             .build();
@@ -107,7 +143,7 @@ public class EconomicIndicatorServiceImpl extends EconomicIndicatorServiceGrpc.E
 
             @Override
             public void onError(Throwable t) {
-                System.out.println("Error in monitorIndicators: " + t.getMessage());
+                logger.warning("Error in monitorIndicators: " + t.getMessage());
             }
 
             @Override

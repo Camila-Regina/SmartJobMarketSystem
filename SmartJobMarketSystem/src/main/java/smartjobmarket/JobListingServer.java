@@ -2,12 +2,12 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
+package smartjobmarket;
+
 /**
  *
  * @author camilareginadasilva
  */
-
-package smartjobmarket;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -24,6 +24,7 @@ public class JobListingServer {
         try {
             Server server = ServerBuilder.forPort(port)
                     .addService(service)
+                    .intercept(new JobListingServiceImpl.MetadataInterceptor())
                     .build()
                     .start();
             logger.info("JobListingServer started, listening on port " + port);
