@@ -28,4 +28,27 @@ A distributed system built in Java using gRPC that simulates a digital labour ma
 ---
 
 ## How to Run
-_Instructions to be added_
+
+### Prerequisites
+- Java 17
+- Maven
+- NetBeans (recommended) or any Java IDE
+
+### Steps
+
+1. Clone the repository:
+   git clone https://github.com/Camila-Regina/SmartJobMarketSystem
+
+2. Open the project in NetBeans and build with Maven:
+   mvn clean install
+
+3. Run the three services (in separate terminals or run configurations):
+   - JobListingServer
+   - WorkerProfileServer
+   - EconomicIndicatorServer
+
+4. Run the GUI client:
+   - SmartJobMarketGUI
+
+> The client will automatically discover the services via jmDNS.
+> If discovery fails, it falls back to default ports: 50051, 50052, 50053.
